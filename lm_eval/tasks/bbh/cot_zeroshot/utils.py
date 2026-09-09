@@ -38,7 +38,9 @@ class ExtendedRegexFilter(RegexFilter):
             st = st.translate(self.punct_tbl)
         return st
 
-    def find_match(self, regex, resp, convert_dict={}):
+    def find_match(self, regex, resp, convert_dict: dict[str, str] | None = None):
+        if convert_dict is None:
+            convert_dict = {}
         match = regex.findall(resp)
         if match:
             match = match[self.group_select]
@@ -56,7 +58,7 @@ class ExtendedRegexFilter(RegexFilter):
 class MapRegexFilter(ExtendedRegexFilter):
     def __init__(
         self,
-        regex_pattern_to_value: dict = {},
+        regex_pattern_to_value: dict | None = None,
         group_select=0,
         fallback: str = "[invalid]",
         ignore_case=False,
@@ -70,6 +72,8 @@ class MapRegexFilter(ExtendedRegexFilter):
         ignore_punctuation: Remove the punctuation before matching with the given regex
         regexes_to_ignore: Remove these regexes before matching with the given regex
         """
+        if regex_pattern_to_value is None:
+            regex_pattern_to_value = {}
         super().__init__(
             "|".join(list(regex_pattern_to_value.keys())),
             group_select,
@@ -141,12 +145,10 @@ class NumberParseRegexFilter(ExtendedRegexFilter):
 
 
 class WordSortFilter(Filter):
-    """ """
-
     def apply(self, resps, docs):
         filtered_resps = []
 
-        for r, doc in zip(resps, docs):
+        for r, doc in zip(resps, docs, strict=False):
             words = doc["input"].split("List:")[1].strip().split()
             regex = re.compile("|".join([f"\\b{w}\\b" for w in words]))
             filtered = []
@@ -154,7 +156,9 @@ class WordSortFilter(Filter):
                 match = regex.findall(resp)
                 match.reverse()
                 ordered_words = reversed(
-                    collections.OrderedDict(zip(match, [None] * len(match)))
+                    collections.OrderedDict(
+                        zip(match, [None] * len(match), strict=False)
+                    )
                 )
                 filtered.append(" ".join(ordered_words))
             filtered_resps.append(filtered)
@@ -183,7 +187,7 @@ class MultiChoiceRegexFilter(ExtendedRegexFilter):
 
         filtered_resps = []
 
-        for r, doc in zip(resps, docs):
+        for r, doc in zip(resps, docs, strict=False):
             fallback_regexes = []
             choice_to_alpha = {}
             next_alpha = "A"
