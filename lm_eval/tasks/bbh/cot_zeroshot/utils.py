@@ -1,4 +1,3 @@
-import collections
 import re
 import sys
 import unicodedata
@@ -65,7 +64,8 @@ class MapRegexFilter(ExtendedRegexFilter):
         ignore_punctuation=False,
         regexes_to_ignore=None,
     ) -> None:
-        """
+        """Map regex matches to fixed values.
+
         regex_pattern_to_value: Match the regex pattern and change the result into the value
         group_select: Selects the (group_select)th match from the findall result. We use the whole regex_patterns, concatenated by |
         ignore_case: Lowers the case of response before matching with the given regex
@@ -148,18 +148,13 @@ class WordSortFilter(Filter):
     def apply(self, resps, docs):
         filtered_resps = []
 
-        for r, doc in zip(resps, docs, strict=False):
+        for r, doc in zip(resps, docs, strict=True):
             words = doc["input"].split("List:")[1].strip().split()
             regex = re.compile("|".join([f"\\b{w}\\b" for w in words]))
             filtered = []
             for resp in r:
                 match = regex.findall(resp)
-                match.reverse()
-                ordered_words = reversed(
-                    collections.OrderedDict(
-                        zip(match, [None] * len(match), strict=False)
-                    )
-                )
+                ordered_words = reversed(dict.fromkeys(reversed(match)))
                 filtered.append(" ".join(ordered_words))
             filtered_resps.append(filtered)
 
@@ -168,7 +163,8 @@ class WordSortFilter(Filter):
 
 class MultiChoiceRegexFilter(ExtendedRegexFilter):
     def __init__(self, *args, **kwargs):
-        r"""
+        r"""Extract a multiple-choice answer letter from a response.
+
         regex_pattern: The basic regex pattern to use. If fails to match, we will use the customized match procedure
                         - step 1 : We parse the choices between ([A-Z])s then try to find these choices in the response.
                         - step 2 : We parse the choice with regex :[\s]*([A-?]), where ? varies by number of choices.
